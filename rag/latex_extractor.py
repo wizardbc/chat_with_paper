@@ -396,8 +396,6 @@ def process(latex_file, instruction_template=None):
   bib = extract_bibliography(latex_content)
   bib_parts = split_bibliography(bib, 10000)
   latex_content = remove_bibliography(latex_content) 
-
-  title = extract_title(latex_content)
   
   structure = {
     'Abstract': {
@@ -423,7 +421,20 @@ def process(latex_file, instruction_template=None):
   if instruction_template is None:
     return df
 
-  return df, instruction_template.format(title=title, toc=toc)
+  title = extract_title(latex_content)
+  inst = instruction_template.format(title=title, toc=toc)
+  
+  if new_cmds := extract_newcommands(latex_content):
+    inst += f"""
+
+**New LaTeX commands**:
+
+```latex
+{new_cmds}
+```
+"""
+
+  return df, inst
 
 
 if __name__ == "__main__":
