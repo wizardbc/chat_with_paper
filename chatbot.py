@@ -1,20 +1,27 @@
+from io import StringIO
+import os
+import shutil
+import json
+import tarfile
 import numpy as np
 import pandas as pd
-from io import StringIO
 from ast import literal_eval
 import google.generativeai as genai
 import streamlit as st
 
+from rag.latex_extractor import process, extract_title
+from rag.gemini_embd import get_embedding
+
 ### set_page
 st.set_page_config(
-    page_title="Chat with Paper",
+    page_title="Chat with a Paper",
     page_icon=":books:",
     layout="wide",
     initial_sidebar_state="expanded",
     menu_items={
-        'Get help': 'https://github.com/wizardbc/prompt_pattern',
-        'Report a bug': "https://github.com/wizardbc/prompt_pattern/issues",
-        'About': "# Chat with Paper\nMade by Byung Chun Kim\n\nhttps://github.com/wizardbc/prompt_pattern"
+        'Get help': 'https://github.com/wizardbc/chat_with_paper',
+        'Report a bug': "https://github.com/wizardbc/chat_with_paper/issues",
+        'About': "# Chat with a Paper\nMade by Byung Chun Kim\n\nhttps://github.com/wizardbc/chat_with_paper"
     }
 )
 
@@ -60,31 +67,34 @@ with st.sidebar:
     st.session_state.api_key = st.text_input("Google API Key", type="password")
 
 ### Papers
-papers = {
-  "A Prompt Pattern Catalog to Enhance Prompt Engineering with ChatGPT": {
-    "csv": "./data/prompt_pattern.csv",
-    "inst": "./data/prompt_pattern_inst.txt",
-  },
-  "Attention is all you need": {
-    "csv": "./data/attn.csv",
-    "inst": "./data/attn_inst.txt",
-  },
-  "ReALM: Reference Resolution As Language Modeling": {
-    "csv": "./data/realm.csv",
-    "inst": "./data/realm_inst.txt",
-  },
-}
+try:
+  with open('data/papers.json', 'r') as fp:
+    papers = json.load(fp)
+except FileNotFoundError:
+  st.warning("`data/papers.json` file is not found. Please upload tex file in the `Upload` tab.")
+  papers = {}
+  _system_instruction = ''
 
 with st.sidebar:
   st.header("Paper")
-  title = st.selectbox("Paper", papers.keys())
+  title = st.selectbox("Paper", [None] + list(papers.keys()))
 
 # load data
-df_csv = pd.read_csv(papers.get(title).get('csv')).fillna('')
-df_csv["embedding"] = df_csv.embedding.apply(literal_eval).apply(np.array)
+if title:
+  df_csv = pd.read_csv(papers.get(title).get('csv')).fillna('')
+  df_csv["embedding"] = df_csv.embedding.apply(literal_eval).apply(np.array)
 
-with open(papers.get(title).get('inst'), 'r') as f:
-  _system_instruction = f.read()
+  with open(papers.get(title).get('inst'), 'r') as fp:
+    _system_instruction = fp.read()
+
+else:
+    _system_instruction = ''
+
+# call when change system_instruction
+def _save_sys_inst():
+  if title:
+    with open(papers.get(title).get('inst'), 'w') as fp:
+      fp.write(st.session_state.sys_inst)
 
 ### search tools
 def search_from_section_names(query:list[str]) -> str:
@@ -141,11 +151,12 @@ with st.sidebar:
   f_call_checkbox = st.checkbox("Function Call", value=False)
   f_response_checkbox = st.checkbox("Function Response", value=False)
 
-tab_main, tab_memo, tab_system = st.tabs(["Main", "Memo", "System Instruction"])
+tab_chat, tab_memo, tab_system, tab_upload = st.tabs(["Chat", "Memo", "System Instruction", "Upload"])
 
-with tab_main:
+with tab_chat:
   st.title("💬 Chat with a Paper")
-  st.caption(f":books: Read \"{title}\" with Gemini 1.5")
+  if title:
+    st.caption(f":books: Read \"{title}\" with Gemini 1.5")
   st.divider()
   if not st.session_state.api_key:
     st.warning("Your Google API Key is not provided in `.streamlit/secrets.toml`, but you can input one in the sidebar for temporary use.", icon="⚠️")
@@ -169,9 +180,9 @@ with tab_memo:
 
 # system prompt
 with tab_system:
-  system_instruction = st.text_area("system instruction", _system_instruction, height=512)
+  system_instruction = st.text_area("system instruction", _system_instruction, height=512, key='sys_inst', on_change=_save_sys_inst)
 
-# help, memo in col_r
+# help, memo in col_r of tab_chat
 if help_checkbox:
   with col_r:
     with st.container(border=True):
@@ -190,6 +201,78 @@ if memo_checkbox:
       st.button("Remove", on_click=st.session_state.memo.remove, args=[m], key=f'_memo_{i}')
       if i < len_memo_m_1:
         st.divider()
+
+### Upload
+
+# Function to handle file upload and extraction
+def handle_upload(uploaded_file):
+  upload_dir = os.path.join("uploads", uploaded_file.file_id)
+  if not os.path.exists(upload_dir):
+    os.makedirs(upload_dir, exist_ok=True)
+    file_path = os.path.join(upload_dir, uploaded_file.name)
+    with open(file_path, "wb") as f:
+      f.write(uploaded_file.getbuffer())
+    if tarfile.is_tarfile(file_path):
+      with tarfile.open(file_path, "r:gz") as tar:
+        tar.extractall(upload_dir)
+  return upload_dir
+
+# Function to find all .tex files in the upload directory and subdirectories
+def find_tex_files(directory):
+  tex_files = []
+  for root, _, files in os.walk(directory):
+    for file in files:
+      if file.endswith(".tex"):
+        tex_files.append(os.path.join(root, file))
+  return tex_files
+
+with tab_upload:
+  uploaded_file = st.file_uploader("Upload `.tex` file or `.tar.gz` file", type=["tex", ".gz"], key='uploader')
+
+  if uploaded_file is not None:
+    upload_dir = handle_upload(uploaded_file)
+    st.success(f"Uploaded {uploaded_file.name}")
+    tex_files = find_tex_files(upload_dir)
+    if tex_files:
+      selected_file = st.selectbox("Choose a `.tex` file to process", ['/'.join(f.split('/')[2:]) for f in tex_files])
+      try:
+        with open(os.path.join(upload_dir, selected_file), 'r') as fp:
+          _title = extract_title(fp.read())
+          if not _title:
+            _title = "Title is not found."
+      except:
+        _title = "Title is not found."
+      uploaded_title = st.text_input("Display name", _title)
+    else:
+      st.info("No .tex files found. Please upload another one.")
+      shutil.rmtree(upload_dir)
+    if st.button("Process", type="primary"):
+      with st.status(f"Processing {selected_file}...", expanded=True) as status:
+        st.write("Extracting...")
+        with open("rag/instruction_template.txt") as f:
+          template = f.read()
+        df, inst = process(os.path.join(upload_dir, selected_file), template)
+        fname = hex(pd.util.hash_pandas_object(df).sum())[-8:]
+        st.write("Getting embeddings...")
+        if os.path.exists(f"data/{fname}.csv"):
+          st.warning(f"`{fname}.csv` already exists.")
+        else:
+          df['embedding'] = get_embedding(df)
+          df.to_csv(f"data/{fname}.csv")
+          with open(f"data/{fname}.txt", 'w') as f:
+            f.write(inst)
+        st.write("Adding...")
+        papers.update({
+          uploaded_title: {
+            "csv": f"data/{fname}.csv",
+            "inst": f"data/{fname}.txt"
+          }
+        })
+        with open('data/papers.json', 'w') as fp:
+          json.dump(papers, fp)
+        status.update(label=f"{selected_file} processed successfully", state="complete", expanded=False)
+      shutil.rmtree(upload_dir)
+      st.warning("Successed. Please reload the page. Press `CTRL+R` or `CMD+R`.")
 
 ### gemini parameters
 with st.sidebar:
@@ -217,7 +300,7 @@ model = genai.GenerativeModel(
   model_name=model_name,
   generation_config=generation_config,
   safety_settings=safety_settings,
-  system_instruction=system_instruction,
+  system_instruction=system_instruction if system_instruction else None,
   tools=tools.values(),
 )
 chat_session = model.start_chat(
@@ -271,9 +354,11 @@ for i, content in enumerate(chat_session.history):
           st.json(fr.response["result"])
 
 ### chat input
+
 if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_state.api_key else True):
   with messages.chat_message('human'):
     st.write(prompt)
+  err_msg_content = "You may have triggered Google's content filter.\nThis is likely because you are trying to generate copyrighted documents."
   with messages.chat_message('ai'):
     with st.spinner("Generating..."):
       try:
@@ -281,9 +366,9 @@ if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_st
         text = st.write_stream(gemini_stream_text(response))
         st.session_state.history = chat_session.history
       except genai.types.StopCandidateException as e:
-        error(e, "구글의 contents filter 에 걸렸을 수 있습니다.\n저작권이 있는 문서를 생성하려는 경우 일 가능성이 있습니다.")
+        error(e, err_msg_content)
       except genai.types.BrokenResponseError as e:
-        error(e, "구글의 contents filter 에 걸렸을 수 있습니다.\n저작권이 있는 문서를 생성하려는 경우 일 가능성이 있습니다.")
+        error(e, err_msg_content)
       # function response
       fr_parts = []
       for part in response.parts:
@@ -304,8 +389,8 @@ if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_st
             st.rerun()
         except genai.types.StopCandidateException as e:
           st.session_state.history = st.session_state.history[:-2]
-          error(e, "구글의 contents filter 에 걸렸을 수 있습니다.\n저작권이 있는 문서를 생성하려는 경우 일 가능성이 있습니다.")
+          error(e, err_msg_content)
         except genai.types.BrokenResponseError as e:
           st.session_state.history = st.session_state.history[:-2]
-          error(e, "구글의 contents filter 에 걸렸을 수 있습니다.\n저작권이 있는 문서를 생성하려는 경우 일 가능성이 있습니다.")
+          error(e, err_msg_content)
     st.button("Memo", on_click=st.session_state.memo.append, args=[text], key=f'_btn_last')
