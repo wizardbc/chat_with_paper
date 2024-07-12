@@ -322,7 +322,7 @@ with st.sidebar:
   st.header("Gemini Parameters")
   model_name = st.selectbox("model", ["gemini-1.5-flash", "gemini-1.5-pro"])
   generation_config = {
-    "temperature": st.slider("temperature", min_value=0.0, max_value=1.0, value=1.0),
+    "temperature": st.slider("temperature", min_value=0.0, max_value=1.0, value=0.3),
     "top_p": st.slider("top_p", min_value=0.0, max_value=1.0, value=0.95),
     "top_k": st.number_input("top_k", min_value=1, value=64),
     "max_output_tokens": st.number_input("max_output_tokens", min_value=1, value=8192),
@@ -412,36 +412,28 @@ if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_st
   err_msg_content = "You may have triggered Google's content filter.\nThis is likely because you are trying to generate copyrighted documents."
   with messages.chat_message('ai'):
     with st.spinner("Generating..."):
-      try:
-        response = chat_session.send_message(prompt, stream=True)
-        text = st.write_stream(gemini_stream_text(response))
-        st.session_state.history = chat_session.history
-      except genai.types.StopCandidateException as e:
-        error(e, err_msg_content)
-      except genai.types.BrokenResponseError as e:
-        error(e, err_msg_content)
-      # function response
-      fr_parts = []
-      for part in response.parts:
-        if fc := part.function_call:
-          st.toast(f"**Function Calling**\n`{fc.name}`")
-          fr_parts.append(
-            genai.protos.Part(
-              function_response=genai.protos.FunctionResponse(
-                name=fc.name,
-                response={"result": tools[fc.name](**fc.args)}))
-          )
-      if fr_parts:
+      _content = prompt
+      while _content:
         try:
-          response = chat_session.send_message(fr_parts)
+          response = chat_session.send_message(_content, stream=True)
           text = st.write_stream(gemini_stream_text(response))
           st.session_state.history = chat_session.history
-          if f_call_checkbox or f_response_checkbox:
-            st.rerun()
         except genai.types.StopCandidateException as e:
-          st.session_state.history = st.session_state.history[:-2]
           error(e, err_msg_content)
         except genai.types.BrokenResponseError as e:
-          st.session_state.history = st.session_state.history[:-2]
           error(e, err_msg_content)
+        # function response
+        fr_parts = []
+        for part in response.parts:
+          if fc := part.function_call:
+            st.toast(f"**Function Calling**\n`{fc.name}`")
+            fr_parts.append(
+              genai.protos.Part(
+                function_response=genai.protos.FunctionResponse(
+                  name=fc.name,
+                  response={"result": tools[fc.name](**fc.args)}))
+            )
+        _content = fr_parts
+    if f_call_checkbox or f_response_checkbox:
+      st.rerun()
     st.button("Memo", on_click=st.session_state.memo.append, args=[text], key=f'_btn_last')
