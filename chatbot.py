@@ -66,6 +66,9 @@ with st.sidebar:
   else:
     st.session_state.api_key = st.text_input("Google API Key", type="password")
 
+if not st.session_state.api_key:
+  st.warning("Your Google API Key is not provided in `.streamlit/secrets.toml`, but you can input one in the sidebar for temporary use.", icon="⚠️")
+
 ### Papers
 try:
   with open('data/papers.json', 'r') as fp:
@@ -158,8 +161,6 @@ with tab_chat:
   if title:
     st.caption(f":books: Read \"{title}\" with Gemini 1.5")
   st.divider()
-  if not st.session_state.api_key:
-    st.warning("Your Google API Key is not provided in `.streamlit/secrets.toml`, but you can input one in the sidebar for temporary use.", icon="⚠️")
 
   if help_checkbox or memo_checkbox:
     col_l, col_r = st.columns([6,4], vertical_alignment='bottom')

@@ -3,8 +3,6 @@ import google.generativeai as genai
 import streamlit as st
 from tqdm.auto import tqdm
 
-genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-
 def get_embedding(df:pd.DataFrame, model:str="models/text-embedding-004") -> list:
   """
   Generate embeddings for the content of a DataFrame using a specified model.
@@ -49,6 +47,13 @@ if __name__ == "__main__":
   parser.add_argument('csv_file', type=str, help='Path to the input CSV file')
   parser.add_argument('-o', '--output', type=str, help='Path to the output CSV file (optional, if not specified, input file will be overridden)')
   args = parser.parse_args()
+
+  ### Google API key
+  try:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+  except:
+    api_key = input("Enter your Google API Key: ")
+  genai.configure(api_key=api_key)
 
   # Load the input CSV file into a DataFrame
   df = pd.read_csv(args.csv_file).fillna('')

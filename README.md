@@ -1,6 +1,6 @@
 # Chat with a Paper
 
-- Clone this repo
+https://chatwithpaper.streamlit.app/
 
 ### Dependencies
 `google-generativeai`, `streamlit`, `pandas`, `tqdm`.
@@ -25,6 +25,7 @@ You can upload tex files with `.tex` or `.tar.gz` on `Upload` tab in chatbot.
 
 Also you can manually process tex files and get embeddings.
 
+- Clone this repo
 - Place your tex files in `./uploads/arXiv-????.?????v?/`
 - Process the LaTeX file
   ```bash
