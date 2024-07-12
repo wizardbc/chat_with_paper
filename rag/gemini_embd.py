@@ -3,7 +3,7 @@ import google.generativeai as genai
 import streamlit as st
 from tqdm.auto import tqdm
 
-def get_embedding(df:pd.DataFrame, model:str="models/text-embedding-004") -> list:
+def get_embedding(df:pd.DataFrame, model:str="models/text-embedding-004") -> list[list]:
   """
   Generate embeddings for the content of a DataFrame using a specified model.
 

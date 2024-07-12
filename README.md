@@ -14,30 +14,29 @@ GOOGLE_API_KEY = "YOUR_API_KEY"
 You can obtain your Google API key from [Google AI Studio](https://aistudio.google.com/app/apikey).
 
 ### Chatbot
-Run streamlit app.
+Run the Streamlit app.
 ```bash
 streamlit run chatbot.py
 ```
 
 ### RAG
 
-You can upload tex files with `.tex` or `.tar.gz` on `Upload` tab in chatbot.
+You can upload `.tex` files or `.tar.gz` archives on the `Upload` tab in the chatbot.
 
-Also you can manually process tex files and get embeddings.
+You can also manually process `.tex` files and generate embeddings.
 
-- Clone this repo
-- Place your tex files in `./uploads/arXiv-????.?????v?/`
+- Clone this repository and install the requirements.
+- Place your tex files in `uploads/arXiv-????.?????v?/`
 - Process the LaTeX file
   ```bash
-  python ./rag/latex_extractor.py \
-    ./uploads/arXiv-????.?????v?/main.tex \
-    -o ./data/paper.csv \
-    -t ./rag/instruction_template.txt \
-    --inst ./data/instruction.txt
+  python rag/latex_extractor.py \
+    uploads/arXiv-????.?????v?/main.tex \
+    -o data/paper.csv \
+    -t rag/instruction_template.txt \
+    --inst data/instruction.txt
   ```
-- Get embeddings
+- Generate embeddings:
   ```bash
-  python ./rag/gemini_embd.py ./data/paper.csv
+  python rag/gemini_embd.py data/paper.csv
   ```
-
-`data/papers.json` contains the titles, embedding and system instruction files info.
+- `data/papers.json` contains the titles, embeddings, and system instruction file information.

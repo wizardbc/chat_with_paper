@@ -429,7 +429,7 @@ def process(latex_file, instruction_template=None):
 
 **New LaTeX commands**:
 
-When writing mathematical formulas in LaTeX, please use standard LaTeX commands instead of the custom `newcommand` commands provided below.
+When writing mathematical formulas in LaTeX, please use standard LaTeX commands instead of the custom `\\newcommand` commands provided below.
 
 ```latex
 {new_cmds}
@@ -444,7 +444,7 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser(description='Process a LaTeX file to extract information for RAG.')
   parser.add_argument('latex_file', type=str, help='Path to the main LaTeX file')
-  parser.add_argument('-o', '--output', type=str, required=True, help='Path to the output CSV file')
+  parser.add_argument('-o', '--output', type=str, help='Path to the output CSV file', default=None)
   parser.add_argument('-t', '--template', type=str, help='Path to the instruction template text file', default=None)
   parser.add_argument('--inst', type=str, help='Path to the output instruction text file', default=None)
   args = parser.parse_args()
@@ -464,4 +464,7 @@ if __name__ == "__main__":
   else:
     df = process(args.latex_file)
   
-  df.to_csv(args.output, index=False)
+  if args.output:
+    df.to_csv(args.output, index=False)
+  else:
+    print("\n\n**Warning** .csv file is not generated.")
