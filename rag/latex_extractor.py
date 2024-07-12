@@ -429,6 +429,8 @@ def process(latex_file, instruction_template=None):
 
 **New LaTeX commands**:
 
+When writing mathematical formulas in LaTeX, please use standard LaTeX commands instead of the custom `newcommand` commands provided below.
+
 ```latex
 {new_cmds}
 ```
