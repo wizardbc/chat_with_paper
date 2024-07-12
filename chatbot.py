@@ -259,6 +259,8 @@ with tab_upload:
           st.warning(f"`{fname}.csv` already exists.")
         else:
           df['embedding'] = get_embedding(df)
+          if not os.path.exists("data"):
+            os.mkdir("data")
           df.to_csv(f"data/{fname}.csv")
           with open(f"data/{fname}.txt", 'w') as f:
             f.write(inst)
