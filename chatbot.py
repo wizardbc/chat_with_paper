@@ -207,14 +207,19 @@ with tab_system:
 
 # help, memo in col_r of tab_chat
 if help_checkbox:
-  with col_r:
-    with st.container(border=True):
-      st.write("Retrieve the contents of the paper and answer.")
-      st.write("""Two functions are used to retrieve the contents:
+  _help_text = """Retrieve the contents of the paper and answer.
+
+Two functions are used to retrieve the contents:
 -	`search_from_section_names`: Extracts the section names of the paper where the answer to the question is expected to be found and retrieves the contents of those sections.
 - `search_from_text`: Retrieves the contents using the cosine similarity between the embedding representing the section content of the paper and the embedding of the question.
 
-The language model determines which function to use and may be explicitly instructed to use a particular function by mentioning its name.""")
+The language model determines which function to use and may be explicitly instructed to use a particular function by mentioning its name.
+
+Generating the exact same content as the paper might cause an internal error 500. I believe this is due to Google's content filter regarding copyright.
+"""
+  with col_r:
+    with st.container(border=True):
+      st.write(_help_text)
 if memo_checkbox:
   with col_r, st.container(border=True):
     st.subheader("Memo", divider=True)
@@ -417,7 +422,6 @@ if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_st
         try:
           response = chat_session.send_message(_content, stream=True)
           text = st.write_stream(gemini_stream_text(response))
-          st.session_state.history = chat_session.history
         except genai.types.StopCandidateException as e:
           error(e, err_msg_content)
         except genai.types.BrokenResponseError as e:
@@ -434,6 +438,7 @@ if prompt := st.chat_input("Ask me anything...", disabled=False if st.session_st
                   response={"result": tools[fc.name](**fc.args)}))
             )
         _content = fr_parts
+      st.session_state.history = chat_session.history
     if f_call_checkbox or f_response_checkbox:
       st.rerun()
     st.button("Memo", on_click=st.session_state.memo.append, args=[text], key=f'_btn_last')
