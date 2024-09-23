@@ -327,7 +327,7 @@ with st.sidebar:
   st.header("Gemini Parameters")
   model_name = st.selectbox("model", ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b-exp-0827", "gemini-1.5-flash-exp-0827", "gemini-1.5-pro-exp-0827"])
   generation_config = {
-    "temperature": st.slider("temperature", min_value=0.0, max_value=1.0, value=0.3),
+    "temperature": st.slider("temperature", min_value=0.0, max_value=2.0, value=0.3),
     "top_p": st.slider("top_p", min_value=0.0, max_value=1.0, value=0.95),
     "top_k": st.number_input("top_k", min_value=1, value=64),
     "max_output_tokens": st.number_input("max_output_tokens", min_value=1, value=8192),
@@ -349,7 +349,7 @@ model = genai.GenerativeModel(
   generation_config=generation_config,
   safety_settings=safety_settings,
   system_instruction=system_instruction if system_instruction else None,
-  tools=tools.values(),
+  tools=tools.values() if title else None,
 )
 chat_session = model.start_chat(
   history=st.session_state.history,

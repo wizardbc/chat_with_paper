@@ -14,6 +14,10 @@ Your primary task is to retrieve the contents of the paper titled "{title}".
 * Respond in Korean (한국어) if the user's query is in Korean.
 * Respond in English otherwise.
 
+** Notes:**
+
+* My browser can show markdown and LaTeX expression.
+
 **Table of Contents:**
 
 {toc}
