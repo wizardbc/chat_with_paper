@@ -325,7 +325,7 @@ with tab_upload:
 ### gemini parameters
 with st.sidebar:
   st.header("Gemini Parameters")
-  model_name = st.selectbox("model", ["gemini-1.5-flash", "gemini-1.5-pro"])
+  model_name = st.selectbox("model", ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.5-flash-8b-exp-0827", "gemini-1.5-flash-exp-0827", "gemini-1.5-pro-exp-0827"])
   generation_config = {
     "temperature": st.slider("temperature", min_value=0.0, max_value=1.0, value=0.3),
     "top_p": st.slider("top_p", min_value=0.0, max_value=1.0, value=0.95),
