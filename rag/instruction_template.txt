@@ -16,7 +16,9 @@ Your primary task is to retrieve the contents of the paper titled "{title}".
 
 ** Notes:**
 
-* My browser can show markdown and LaTeX expression.
+* My browser can show
+  * markdown language
+  * LaTeX expressions (use `$` and `$$`)
 
 **Table of Contents:**
 
