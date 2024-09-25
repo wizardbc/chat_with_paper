@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import google.generativeai as genai
 import streamlit as st
@@ -30,14 +31,28 @@ def get_embedding(df:pd.DataFrame, model:str="models/text-embedding-004") -> lis
      if t:
       title = t
     pbar.set_description(title)
-    embds.append(
-      genai.embed_content(
+    if len(text) > 10000:
+      n_chunks = len(text)//9000
+      chunks = [text[(0 if i==0 else (i*9000-1000)) + (i+1)*9000] for i in range(n_chunks)]
+      embd_chunks = [
+        np.array(genai.embed_content(
+          model=model,
+          content=chunk,
+          task_type="retrieval_document",
+          title=title,
+        )["embedding"]) * max(len(chunk)-1000, 0) / n_chunks
+        for chunk in chunks
+      ]
+      embd = np.stack(embd_chunks).sum(axis=0).tolist()
+      
+    else:
+      embd = genai.embed_content(
         model=model,
         content=text,
         task_type="retrieval_document",
         title=title,
       )["embedding"]
-    )
+    embds.append(embd)
   return embds
 
 if __name__ == "__main__":

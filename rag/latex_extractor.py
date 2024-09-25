@@ -394,7 +394,7 @@ def process(latex_file, instruction_template=None):
   latex_content = get_full_latex_text(latex_file)
 
   bib = extract_bibliography(latex_content)
-  bib_parts = split_bibliography(bib, 10000)
+  bib_parts = split_bibliography(bib, 20000)
   latex_content = remove_bibliography(latex_content) 
   
   structure = {
